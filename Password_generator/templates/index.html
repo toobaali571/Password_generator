@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interactive Password Generator</title>
+    <!-- Links to the Flask static CSS stylesheet -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="card">
+        <h2>Password Generator</h2>
+        <p class="subtitle">Secure, randomly generated passwords</p>
+
+        <!-- Output Screen -->
+        <div class="password-display-container">
+            <input type="text" id="passwordDisplay" readonly placeholder="Click Generate">
+            <button id="copyBtn" class="icon-btn" title="Copy to clipboard">📋</button>
+        </div>
+
+        <!-- Strength Indicator -->
+        <div class="strength-meter">
+            <span>Strength:</span>
+            <span id="strengthText" class="strength-text weak">Weak</span>
+            <div class="strength-bar-container">
+                <div id="strengthBar" class="strength-bar weak"></div>
+            </div>
+        </div>
+
+        <!-- Controls -->
+        <div class="control-group">
+            <div class="label-row">
+                <label for="lengthSlider">Password Length</label>
+                <span id="lengthValue">12</span>
+            </div>
+            <input type="range" id="lengthSlider" min="6" max="32" value="12">
+        </div>
+
+        <button id="generateBtn" class="primary-btn">Generate Password</button>
+    </div>
+
+    <script>
+        const passwordDisplay = document.getElementById('passwordDisplay');
+        const copyBtn = document.getElementById('copyBtn');
+        const lengthSlider = document.getElementById('lengthSlider');
+        const lengthValue = document.getElementById('lengthValue');
+        const strengthText = document.getElementById('strengthText');
+        const strengthBar = document.getElementById('strengthBar');
+        const generateBtn = document.getElementById('generateBtn');
+
+        // Track and update range slider values live
+        lengthSlider.addEventListener('input', (e) => {
+            const val = e.target.value;
+            lengthValue.textContent = val;
+            updateStrengthIndicator(val);
+        });
+
+        // Communicate with Python server to generate password
+        generateBtn.addEventListener('click', () => {
+            const selectedLength = lengthSlider.value;
+            
+            fetch('/generate', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ length: selectedLength })
+            })
+            .then(response => response.json())
+            .then(data => {
+                passwordDisplay.value = data.password;
+            });
+        });
+
+        // Copy functionality
+        copyBtn.addEventListener('click', () => {
+            if (!passwordDisplay.value || passwordDisplay.value === 'Click Generate') return;
+            
+            navigator.clipboard.writeText(passwordDisplay.value).then(() => {
+                const originalIcon = copyBtn.textContent;
+                copyBtn.textContent = '✅';
+                setTimeout(() => { copyBtn.textContent = originalIcon; }, 1500);
+            });
+        });
+
+        // Visual color indicator logic
+        function updateStrengthIndicator(length) {
+            strengthText.className = 'strength-text';
+            strengthBar.className = 'strength-bar';
+            
+            if (length < 10) {
+                strengthText.textContent = 'Weak';
+                strengthText.classList.add('weak');
+                strengthBar.classList.add('weak');
+                strengthBar.style.width = '33%';
+            } else if (length >= 10 && length < 16) {
+                strengthText.textContent = 'Medium';
+                strengthText.classList.add('medium');
+                strengthBar.classList.add('medium');
+                strengthBar.style.width = '66%';
+            } else {
+                strengthText.textContent = 'Strong';
+                strengthText.classList.add('strong');
+                strengthBar.classList.add('strong');
+                strengthBar.style.width = '100%';
+            }
+        }
+
+        // Initialize default strength on page render
+        updateStrengthIndicator(lengthSlider.value);
+    </script>
+</body>
+</html>
